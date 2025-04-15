@@ -1,0 +1,59 @@
+# udp_server.py
+import socket
+
+HOST = '0.0.0.0'
+PORT = 5001
+
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+server_socket.bind((HOST, PORT))
+
+print(f"UDP Server listening on port {PORT}...")
+
+# Receive filename first
+data, client_addr = server_socket.recvfrom(1024)
+filename = data.decode()
+print(f"Receiving file: {filename}")
+
+with open(filename, 'wb') as f:
+    while True:
+        data, _ = server_socket.recvfrom(4096)
+        if data == b'__END__':
+            print("File transfer complete.")
+            break
+        f.write(data)
+
+server_socket.close()
+
+#udp_client
+# udp_client.py
+import socket
+import os
+import time
+
+HOST = '13.60.199.14'  # Replace with your EC2 public IP
+PORT = 5001
+
+filename = 'example.txt'  # Replace with the file you want to send
+
+if not os.path.exists(filename):
+    print(f"File {filename} not found.")
+    exit()
+
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+# Send filename first
+client_socket.sendto(filename.encode(), (HOST, PORT))
+time.sleep(0.1)  # small delay to prevent merge with file data
+
+# Send file content
+with open(filename, 'rb') as f:
+    while chunk := f.read(4096):
+        client_socket.sendto(chunk, (HOST, PORT))
+        time.sleep(0.01)  # avoid flooding
+
+# Send end signal
+client_socket.sendto(b'__END__', (HOST, PORT))
+
+print(f"File {filename} sent via UDP.")
+client_socket.close()
+
