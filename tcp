@@ -1,0 +1,58 @@
+#client.py
+import socket
+
+# Replace with your actual EC2 Public IP
+HOST = '13.60.199.14'  # Example: '54.123.45.67'
+PORT = 8080  # Port where the server is listening
+
+# Create socket
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+    try:
+        # Connect to the server
+        client_socket.connect((HOST, PORT))
+        print(f" Connected to {HOST}:{PORT}...")
+
+        # Receive data from the server (4096 bytes buffer)
+        data = client_socket.recv(4096)
+
+        # Print the received data (uptime info)
+        print(" Uptime Data Received:\n")
+        print(data.decode('utf-8'))
+
+    except ConnectionRefusedError:
+        print(" Connection refused. Please check if the server is running.")
+    except Exception as e:
+        print(f" Error: {e}")
+
+#server:
+# server.py
+import socket
+import subprocess
+
+HOST = '0.0.0.0'  # Listen on all network interfaces
+PORT = 8080       # Port to listen on
+
+# Create socket
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+    server_socket.bind((HOST, PORT))
+    server_socket.listen(1)
+    print(f" Server listening on port {PORT}...")
+
+    while True:
+        client_conn, client_addr = server_socket.accept()
+        with client_conn:
+            print(f" Connected by {client_addr}")
+
+            try:
+                # Get uptime info using subprocess
+                uptime_output = subprocess.check_output("uptime", shell=True)
+                client_conn.sendall(uptime_output)
+                print(" Sent uptime data.")
+
+            except subprocess.CalledProcessError as e:
+                error_message = f" Failed to get uptime: {e}"
+                client_conn.sendall(error_message.encode('utf-8'))
+                print(error_message)
+
+
+
